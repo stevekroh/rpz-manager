@@ -36,6 +36,11 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+      - name: cache docker images
+        uses: actions/cache@v2
+        with:
+          path: /var/lib/docker
+          key: ${{ runner.os }}-${{ matrix.os }}
       - name: build test image
         run: docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager
       - name: run test image

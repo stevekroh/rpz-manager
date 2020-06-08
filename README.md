@@ -53,10 +53,10 @@ rpz-manager
 ```
  
 ## Automate with Ansible
-You may automate deployment and updates of rpz-manager by adding the
-following to your role or playbook.
+Add the following to your role or playbook.
 
 ```yaml
+# Customize rpz-manager.ini and save it under files
 - name: upload rpz-manager.ini
   copy:
     src: files/rpz-manager.ini
@@ -65,6 +65,7 @@ following to your role or playbook.
     group: root
     mode: 'u=rw,g=r,o=r'
 
+# Customize rpz-loggers.ini and save it under files
 - name: upload rpz-loggers.ini
   copy:
     src: files/rpz-loggers.ini
@@ -73,6 +74,7 @@ following to your role or playbook.
     group: root
     mode: 'u=rw,g=r,o=r'
 
+# rpz-manager will be updated to the latest version when force=yes
 - name: download rpz-manager
   get_url:
     url: https://raw.githubusercontent.com/stevekroh/rpz-manager/master/rpz_manager.py
@@ -82,6 +84,7 @@ following to your role or playbook.
     group: root
     mode: 'u=rwx,g=rx,o=rx'
 
+# Use a cron job to keep your zone fresh
 - name: run rpz-manager daily
   when: node_type == "master"
   cron:

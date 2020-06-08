@@ -48,10 +48,10 @@ jobs:
 
       - name: import docker image if available
         if: steps.docker-cache.outputs.cache-hit == 'true'
-        run: docker import rpz-manager-${{ matrix.os }}.tar rpz-manager
+        run: docker import rpz-manager-${{ matrix.os }}.tar rpz-manager:${{ matrix.os }}
 
       - name: build test image
-        run: docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager
+        run: docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager:${{ matrix.os }}
 
       - name: run test image
         run: docker run -t rpz-manager

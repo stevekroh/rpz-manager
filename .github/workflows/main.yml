@@ -51,10 +51,10 @@ jobs:
         run: docker import rpz-manager-${{ matrix.os }}.tar rpz-manager:${{ matrix.os }}
 
       - name: build test image
-        run: docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager:${{ matrix.os }}
+        run: docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager:${{ matrix.os }} --cache-from rpz-manager:${{ matrix.os }}
 
       - name: run test image
-        run: docker run -t rpz-manager
+        run: docker run -t rpz-manager:${{ matrix.os }}
 
       - name: export docker image if needed
         if: steps.docker-cache.outputs.cache-hit != 'true'

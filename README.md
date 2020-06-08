@@ -1,6 +1,8 @@
 # rpz-manager
 Block ads and malicious domains with response policy zones.
 
+![CI](https://github.com/stevekroh/rpz-manager/workflows/CI/badge.svg?branch=master)
+
 From [Wikipedia](https://en.wikipedia.org/wiki/Response_policy_zone):
 
 > A response policy zone (RPZ) is a mechanism to introduce a customized 

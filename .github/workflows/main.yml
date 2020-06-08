@@ -44,7 +44,7 @@ jobs:
         id: docker-cache
         with:
           path: rpz-manager-${{ matrix.os }}.tar
-          key: ${{ matrix.os }}-${{ hashFiles('Dockerfile.' + matrix.os) }}
+          key: ${{ matrix.os }}-${{ hashFiles('Dockerfile.*') }}
 
       - name: import docker image if available
         if: steps.docker-cache.outputs.cache-hit == 'true'

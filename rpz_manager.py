@@ -86,11 +86,6 @@ format        = text
 reload        = off
 
 #
-# Specify a provider of top level domains.
-#
-tld_list_url  = https://data.iana.org/TLD/tlds-alpha-by-domain.txt
-
-#
 # Additionally block all subdomains.
 # The zone will include two entries per domain. For example:
 #
@@ -100,11 +95,19 @@ tld_list_url  = https://data.iana.org/TLD/tlds-alpha-by-domain.txt
 subdomains    = off
 
 #
-# You may provide your own log config to alter the log format, send
-# messages to syslog, etc.
+# A list of top level domains is required for validation purposes.
+# IANA is preferred, though you may choose an alternate provider.
 #
-# See: https://docs.python.org/3/library/logging.config.html#logging.config.fileConfig
-# See: https://raw.githubusercontent.com/stevekroh/rpz-manager/master/config/rpz-loggers.ini
+tld_list_url  = https://data.iana.org/TLD/tlds-alpha-by-domain.txt
+
+#
+# You may provide your own log config to customize message formats,
+# destinations, levels, etc.
+#
+# See: https://docs.python.org/3/library/logging.config.html
+#
+# This log config is a great starting point:
+# https://github.com/stevekroh/rpz-manager/blob/master/config/rpz-loggers.ini
 #
 #log_config    = /etc/rpz-loggers.ini
 

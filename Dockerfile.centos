@@ -1,0 +1,15 @@
+FROM centos:latest
+
+RUN dnf -y install python3 bind bind-utils
+
+WORKDIR /root
+
+COPY test/system/functions /etc/rc.d/init.d/functions
+RUN /usr/libexec/generate-rndc-key.sh
+
+COPY rpz_manager.py /usr/local/bin/rpz-manager
+COPY test /root/test
+RUN /root/test/system/setup_centos.sh
+
+ENV NAMED_DIR=/var/named NAMED_CONF=/etc/named.conf NAMED_USER=named
+CMD ["/root/test/system/entrypoint.sh"]

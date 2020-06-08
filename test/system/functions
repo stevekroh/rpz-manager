@@ -1,0 +1,6 @@
+success() {
+  return 0
+}
+failure() {
+  return $?
+}

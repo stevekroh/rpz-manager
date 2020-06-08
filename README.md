@@ -16,8 +16,8 @@ blocklist feeds. The resulting zones can be used with
 DNS servers).
 
 rpz-manager is easy to deploy. Just copy it to your PATH. Optionally
-use the config file, set up logging, or run a cron job to keep your
-block lists up to date.
+write a config file, set up logging, or use a cron job to keep your
+zone fresh.
 
 ## Before you Start
 Make sure to understand DNS RPZ before using this tool. These sites
@@ -29,11 +29,32 @@ provide great documentation:
 At minimum, you must create a [new zone clause](test/system/named_zone_centos.conf) 
 for RPZ and mention that zone in a [response-policy statement](test/system/named_policy.conf).
  
-## Quick Start with Ansible
-You can add the following to your role or playbook. You can get the
-default rpz-manager.ini by running rpz-manager --init. You can view an
-example rpz-loggers.ini in this repo.
+## Quick Start
+Run the following as root. /usr/local/bin may not be on the PATH.
+```shell script
+# Download rpz-manager
+curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/rpz_manager.py -o /usr/local/bin/rpz-manager
 
+# Set the executable bit
+chmod u+x /usr/local/bin/rpz-manager
+
+# View the help screen
+rpz-manager --help
+
+# Write /etc/rpz-manager.ini
+# Then update this file to meet your needs
+rpz-manager --init
+
+# Optionally set up logging
+curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/config/rpz-loggers.ini -o /etc/rpz-loggers.ini
+
+# Download block lists then generate an RPZ zone file
+rpz-manager
+```
+ 
+## Automate with Ansible
+You may automate deployment and updates of rpz-manager by adding the
+following to your role or playbook.
 
 ```yaml
 - name: upload rpz-manager.ini
@@ -69,8 +90,5 @@ example rpz-loggers.ini in this repo.
     job: /usr/local/bin/rpz-manager
     user: root
 ```
-
-## Quick Start for Manual Installation
-TODO
 
 Inspired by [Trellmor/bind-adblock](https://github.com/Trellmor/bind-adblock).

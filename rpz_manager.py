@@ -48,11 +48,6 @@ logging.basicConfig(format="%(message)s")
 logger = logging.getLogger("rpz-manager")
 logger.setLevel(logging.INFO)
 
-# https://en.wikipedia.org/wiki/Hostname#Syntax
-# https://devblogs.microsoft.com/oldnewthing/?p=7873
-# Do not count the root label towards the 253 character limit
-ASCII_DNS_NAME_MAX_LENGTH = 253
-
 IANA_TLD_LIST = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
 
 blurb = """
@@ -75,7 +70,7 @@ $ORIGIN %(origin)s
 @ IN NS  localhost.
 """
 
-example_config_file = f"""
+default_config_file = f"""
 [main]
 cache_dir     = /var/cache/rpz-manager
 disable_cache = off
@@ -501,14 +496,8 @@ def pl_collapse_subdomains(tokens, pl_options):
 
 def pl_omit_long_tokens(tokens, pl_options):
     """
-    DNS names are limited to ASCII_DNS_NAME_MAX_LENGTH characters. When
-    these tokens are eventually written to the zone file, the actual
-    DNS name is the zone $ORIGIN appeneded to each token. Therefore we
-    must omit tokens that would exceed the max length when combined
-    with $ORIGIN.
-
-    The max_token_length accounting for $ORIGIN and other settings is
-    computed at runtime.
+    Omit tokens longer than `max_token_length` characters.
+    See max_token_length() for details.
     """
     for token in tokens:
         if len(token) <= pl_options.get("max_token_length", 200):
@@ -669,10 +658,17 @@ def download_block_lists(settings, cache_dir, disable_cache):
                    *settings.block_list_urls)
 
 
+# https://en.wikipedia.org/wiki/Hostname#Syntax
+# https://devblogs.microsoft.com/oldnewthing/?p=7873
+ASCII_DNS_NAME_MAX_LENGTH = 253
+
+
 def max_token_length(settings):
     """
-    Determine the max length of domains our DNS server can accommodate.
-    See pl_omit_long_tokens for details.
+    Determine the max length of tokens we can accommodate when
+    considering each resource record concatenates a token with the zone
+    origin and other text. The combination cannot exceed 253 characters
+    ignoring the root label (trailing dot).
 
     TODO: account for other encodings
     """
@@ -834,7 +830,7 @@ def _setup_config_file(settings):
     elif settings.init:
         logger.info("writing %s", settings.config_path)
         with settings.config_path.open("w") as config_file:
-            config_file.write(example_config_file.lstrip())
+            config_file.write(default_config_file.lstrip())
         raise CommandExitSuccess
 
 

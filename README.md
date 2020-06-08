@@ -32,3 +32,5 @@ TODO
 
 ## Quick Start for Manual Installation
 TODO
+
+Inspired by [Trellmor/bind-adblock](https://github.com/Trellmor/bind-adblock).

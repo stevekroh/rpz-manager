@@ -164,7 +164,9 @@ class Settings:
     zone_section = "zone"  # settings related to zone file contents
     list_section = "list"  # each item in this section is a block list
 
-    def __init__(self, ensure=()):
+    make_available_for_interpolation = ["origin", "serial"]
+
+    def __init__(self):
         """
         Create the ArgumentParser, ConfigParser, and related metadata.
 
@@ -191,7 +193,7 @@ class Settings:
         self.args = self.arg_parser.parse_args()
         if self.args.config_path.is_file():
             self.cfg_parser.read(self.args.config_path)
-        for dest in ensure:
+        for dest in self.make_available_for_interpolation:
             meta = self.metadata[dest]
             value = self.get_setting(dest)
             self.cfg_parser.set(meta.section, dest,
@@ -888,7 +890,7 @@ def main():
     Each step assumes it will succeed. Error checking and validation is
     lazy. Exceptions will be raised as something goes wrong.
     """
-    settings = Settings(ensure=["origin", "serial"])
+    settings = Settings()
 
     _setup_config_file(settings)
     _setup_logging(settings)

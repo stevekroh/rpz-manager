@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /var/lib/docker
-          key: ${{ runner.os }}-${{ matrix.os }}
+          key: ${{ matrix.os }}-${{ hashFiles('Dockerfile.*') }}
       - name: build test image
         run: docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager
       - name: run test image

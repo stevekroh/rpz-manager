@@ -23,6 +23,8 @@ from unittest.mock import MagicMock, patch
 from rpz_manager import *
 from test.test_data import test_data
 
+logger.setLevel(logging.ERROR)
+
 
 class PipelineCollapseSubdomainsTest(TestCase):
     def test_duplicate(self):

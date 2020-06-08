@@ -799,6 +799,7 @@ def write_zone(settings, zone: Zone, zone_name, zone_path):
                         "-F", format,
                         "-o", zone_path,
                         zone_name]
+        logger.info("compiling %s", zone_path)
         _run_command_on_staged_zone(zone, zone_path, command_list)
     os.chmod(zone_path, stat.st_mode)
     os.chown(zone_path, stat.st_uid, stat.st_gid)

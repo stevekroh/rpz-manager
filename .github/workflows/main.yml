@@ -39,27 +39,14 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: cache docker images
-        uses: actions/cache@v2
-        id: docker-cache
-        with:
-          path: rpz-manager-${{ matrix.os }}.tar
-          key: v1-${{ matrix.os }}-${{ hashFiles('Dockerfile.*') }}
-
-      - name: import docker image if available
-        if: steps.docker-cache.outputs.cache-hit == 'true'
-        run: |
-          DOCKER_BUILDKIT=1 docker import ${{ matrix.os }}-latest.tar ${{ matrix.os }}:latest
-          DOCKER_BUILDKIT=1 docker import rpz-manager-${{ matrix.os }}.tar rpz-manager:${{ matrix.os }}
-
       - name: build test image
-        run: DOCKER_BUILDKIT=1 docker build . -f Dockerfile.${{ matrix.os }} -t rpz-manager:${{ matrix.os }} --cache-from rpz-manager:${{ matrix.os }} --build-arg BUILDKIT_INLINE_CACHE=1
+        run: |
+          export DOCKER_BUILDKIT=1
+          TAG=rpz-manager:${{ matrix.os }}
+          docker build . -f Dockerfile.${{ matrix.os }} -t $TAG
 
       - name: run test image
-        run: DOCKER_BUILDKIT=1 docker run -t rpz-manager:${{ matrix.os }}
-
-      - name: export docker image if needed
-        if: steps.docker-cache.outputs.cache-hit != 'true'
         run: |
-          DOCKER_BUILDKIT=1 docker save ${{ matrix.os }}:latest > ${{ matrix.os }}-latest.tar
-          DOCKER_BUILDKIT=1 docker save rpz-manager:${{ matrix.os }} > rpz-manager-${{ matrix.os }}.tar
+          export DOCKER_BUILDKIT=1
+          TAG=rpz-manager:${{ matrix.os }}
+          docker run -t $TAG

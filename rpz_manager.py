@@ -103,7 +103,7 @@ tld_list_url  = https://data.iana.org/TLD/tlds-alpha-by-domain.txt
 # See: https://docs.python.org/3/library/logging.config.html
 #
 # This log config is a great starting point:
-# https://github.com/stevekroh/rpz-manager/blob/master/config/rpz-loggers.ini
+# https://github.com/stevekroh/rpz-manager/blob/version-0.x/config/rpz-loggers.ini
 #
 #log_config    = /etc/rpz-loggers.ini
 

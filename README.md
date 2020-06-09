@@ -1,7 +1,7 @@
 # rpz-manager
 Block ads and malicious domains with response policy zones.
 
-![CI](https://github.com/stevekroh/rpz-manager/workflows/CI/badge.svg?branch=master)
+![CI](https://github.com/stevekroh/rpz-manager/workflows/CI/badge.svg?branch=version-0.x)
 
 From [Wikipedia](https://en.wikipedia.org/wiki/Response_policy_zone):
 
@@ -33,7 +33,7 @@ for RPZ and mention that zone in a [response-policy statement](test/system/named
 Run the following as root. /usr/local/bin may not be on the PATH.
 ```shell script
 # Download rpz-manager
-curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/rpz_manager.py \
+curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/rpz_manager.py \
   -o /usr/local/bin/rpz-manager
 
 # Set the executable bit
@@ -47,7 +47,7 @@ rpz-manager --help
 rpz-manager --init
 
 # Optionally set up logging
-curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/config/rpz-loggers.ini \
+curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/config/rpz-loggers.ini \
   -o /etc/rpz-loggers.ini
 
 # Download block lists then generate an RPZ zone file
@@ -79,7 +79,7 @@ Add the following to your role or playbook.
 # rpz-manager will be updated to the latest version when force=yes
 - name: download rpz-manager
   get_url:
-    url: https://raw.githubusercontent.com/stevekroh/rpz-manager/master/rpz_manager.py
+    url: https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/rpz_manager.py
     dest: /usr/local/bin/rpz-manager
     force: yes
     owner: root
@@ -88,7 +88,6 @@ Add the following to your role or playbook.
 
 # Use a cron job to keep your zone fresh
 - name: run rpz-manager daily
-  when: node_type == "master"
   cron:
     name: rpz-manager
     special_time: daily

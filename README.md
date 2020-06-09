@@ -33,7 +33,8 @@ for RPZ and mention that zone in a [response-policy statement](test/system/named
 Run the following as root. /usr/local/bin may not be on the PATH.
 ```shell script
 # Download rpz-manager
-curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/rpz_manager.py -o /usr/local/bin/rpz-manager
+curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/rpz_manager.py \
+  -o /usr/local/bin/rpz-manager
 
 # Set the executable bit
 chmod u+x /usr/local/bin/rpz-manager
@@ -46,7 +47,8 @@ rpz-manager --help
 rpz-manager --init
 
 # Optionally set up logging
-curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/config/rpz-loggers.ini -o /etc/rpz-loggers.ini
+curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/master/config/rpz-loggers.ini \
+  -o /etc/rpz-loggers.ini
 
 # Download block lists then generate an RPZ zone file
 rpz-manager

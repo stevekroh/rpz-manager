@@ -9,5 +9,7 @@ COPY rpz_manager.py /usr/local/bin/rpz-manager
 COPY test /root/test
 RUN /root/test/system/setup_ubuntu.sh
 
-ENV NAMED_DIR=/etc/bind NAMED_CONF=/etc/bind/named.conf NAMED_USER=bind
+ENV NAMED_DIR=/etc/bind NAMED_USER=bind
+RUN useradd -m -G $NAMED_USER unprivileged
+
 CMD ["/root/test/system/entrypoint.sh"]

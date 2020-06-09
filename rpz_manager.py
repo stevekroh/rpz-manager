@@ -19,11 +19,13 @@
 
 import collections
 import functools
+import grp
 import hashlib
 import ipaddress
 import logging
 import logging.config
 import os
+import pwd
 import shutil
 import subprocess
 import sys
@@ -44,7 +46,7 @@ from typing import List, Iterable
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-VERSION = "0.1"
+VERSION = "0.2"
 
 logging.basicConfig(format="%(message)s")
 logger = logging.getLogger("rpz-manager")
@@ -76,8 +78,10 @@ default_config_file = f"""
 [main]
 cache_dir     = /var/cache/rpz-manager
 disable_cache = off
-named_conf    = /etc/named.conf
 zone_file     = /var/named/rpz.example.com.zone
+zone_uid_name = named
+zone_gid_name = named
+zone_mode     = 664
 format        = text
 reload        = off
 
@@ -168,6 +172,8 @@ class Settings:
 
     make_available_for_interpolation = ["origin", "serial"]
 
+    octal = functools.partial(int, base=8)
+
     def __init__(self):
         """
         Create the ArgumentParser, ConfigParser, and related metadata.
@@ -234,7 +240,7 @@ class Settings:
         self.add_setting("-s", "--silent", dest="silent", type=bool,
                          default=False, action="store_true",
                          help="do not log any messages")
-        self.add_setting("-g", "--debug-pipeline", dest="debug_pipelines",
+        self.add_setting("-G", "--debug-pipeline", dest="debug_pipelines",
                          type=list, default=[], action="append")
         self.add_setting("-p", "--preview", dest="preview", type=bool,
                          default=False, action="store_true",
@@ -266,10 +272,17 @@ class Settings:
                          default=None,
                          help="write the zone file to this location",
                          section=self.main_section)
-        self.add_setting("--named-conf", dest="named_conf", type=Path,
-                         default="/etc/named.conf",
-                         help="path to named.conf",
+        self.add_setting("-u", "--zone-uid-name", dest="zone_uid_name",
+                         type=str, default="named",
+                         help="owner of the zone file to be written",
                          section=self.main_section)
+        self.add_setting("-g", "--zone-gid-name", dest="zone_gid_name",
+                         type=str, default="named",
+                         help="group of the zone file to be written",
+                         section=self.main_section)
+        self.add_setting("-m", "--zone-mode", dest="zone_mode", type=self.octal,
+                         default=self.octal("664"),
+                         help="mode of the zone file to be written")
         self.add_setting("-r", "--reload", dest="reload", type=bool,
                          default=False, action="store_true",
                          help="reload the zone automatically (requires rndc)",
@@ -378,7 +391,7 @@ def reverse_domain_notation(domain: str) -> List[str]:
 
 def pipeline_debugger(pipeline, debug_pipelines):
     """
-    Each `-g <pipeline>` logs all items yielded by that pipeline
+    Each `-G <pipeline>` logs all items yielded by that pipeline
     """
     pipeline_name = pipeline.__name__
     if pipeline_name in debug_pipelines:
@@ -784,10 +797,6 @@ def write_zone(settings, zone: Zone, zone_name, zone_path):
     from the permissions of named.conf.
     """
     format = settings.format
-    if not settings.named_conf.exists():
-        logger.error("named.conf path not specified")
-        raise CommandExitFailure
-    stat = settings.named_conf.stat()
     if zone_path is not None and format == "text":
         command_list = [_get_command("named-checkzone"),
                         zone_name]
@@ -800,8 +809,10 @@ def write_zone(settings, zone: Zone, zone_name, zone_path):
                         zone_name]
         logger.info("compiling %s", zone_path)
         _run_command_on_staged_zone(zone, zone_path, command_list)
-    os.chmod(zone_path, stat.st_mode)
-    os.chown(zone_path, stat.st_uid, stat.st_gid)
+    os.chmod(zone_path, settings.zone_mode)
+    os.chown(zone_path,
+             pwd.getpwnam(settings.zone_uid_name).pw_uid,
+             grp.getgrnam(settings.zone_gid_name).gr_gid)
 
 
 def reload_zone(settings, zone_path, zone_name):

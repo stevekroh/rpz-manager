@@ -11,5 +11,7 @@ COPY rpz_manager.py /usr/local/bin/rpz-manager
 COPY test /root/test
 RUN /root/test/system/setup_centos.sh
 
-ENV NAMED_DIR=/var/named NAMED_CONF=/etc/named.conf NAMED_USER=named
+ENV NAMED_DIR=/var/named NAMED_USER=named
+RUN useradd -m -G $NAMED_USER unprivileged
+
 CMD ["/root/test/system/entrypoint.sh"]

@@ -43,7 +43,7 @@ test_data_by_path = {urlparse(url).path: text
 rpz_manager = find("rpz_manager.py") or find("rpz-manager")
 
 cache_dir = os.getenv("CACHE_DIR", "/var/cache/rpz-manager")
-named_conf = os.getenv("NAMED_CONF", "/etc/named.conf")
+named_user = os.getenv("NAMED_USER", "named")
 
 test_origin = "rpz.example.com."
 
@@ -126,7 +126,8 @@ class T1CommandLineTests(FunctionalTestCase):
                          success=True):
         proc = subprocess.run([rpz_manager,
                                noise,
-                               "--named-conf", named_conf,
+                               "-u", named_user,
+                               "-g", named_user,
                                "-t", self.example_list_tld,
                                "-l", self.example_list_one,
                                "-l", self.example_list_two,
@@ -215,15 +216,16 @@ class T2ConfigFileTests(FunctionalTestCase):
     def _install_config(self, format="text"):
         text = f"""
             [main]
-            zone_file    = {self.zone_path}
-            tld_list_url = {self.example_list_tld}
-            cache_dir    = {self.cache_dir}
-            format       = {format}
-            reload       = off
-            named_conf   = {named_conf}
+            zone_file     = {self.zone_path}
+            tld_list_url  = {self.example_list_tld}
+            cache_dir     = {self.cache_dir}
+            format        = {format}
+            reload        = off
+            zone_uid_name = {named_user}
+            zone_gid_name = {named_user}
             
             [zone]
-            origin       = {test_origin}
+            origin        = {test_origin}
     
             [list]
             {self.example_list_one}
@@ -256,8 +258,6 @@ class T3AcceptanceTests(FunctionalTestCase):
     cache_dir = Path(os.getenv("CACHE_DIR", "/var/cache/rpz-manager"))
     named_dir = Path(os.getenv("NAMED_DIR", "/var/named"))
 
-    named_user = os.getenv("NAMED_USER", "named")
-
     resolv_conf = Path("/etc/resolv.conf")
 
     @classmethod
@@ -270,7 +270,7 @@ class T3AcceptanceTests(FunctionalTestCase):
         cls.resolv_conf.write_text(cls.contents)
 
     def _run_named(self):
-        return Popen(["named", "-u", self.named_user, "-f"])
+        return Popen(["named", "-u", named_user, "-f"])
 
     def _run_rpz_manager(self, args=None, noise="--silent", success=True):
         proc = subprocess.run([rpz_manager, noise] + (args or []),
@@ -291,12 +291,6 @@ class T3AcceptanceTests(FunctionalTestCase):
         self.assertIn("bar.example.net", proc.stdout)
 
     def _test_command_line_output(self, args):
-        # proc = self._run_rpz_manager(["-t", self.example_list_tld,
-        #                               "-l", self.example_list_one,
-        #                               "-l", self.example_list_two,
-        #                               "--origin", test_origin,
-        #                               "-z", self.zone_path,
-        #                               "--named-conf", named_conf])
         proc = self._run_rpz_manager(["-t", self.example_list_tld,
                                       "-l", self.example_list_one,
                                       "-l", self.example_list_two,
@@ -315,14 +309,15 @@ class T3AcceptanceTests(FunctionalTestCase):
     def _test_config_file_output(self):
         text = f"""
             [main]
-            zone_file    = {self.zone_path}
-            tld_list_url = {self.example_list_tld}
-            format       = text
-            reload       = off
-            named_conf   = {named_conf}
+            zone_file     = {self.zone_path}
+            tld_list_url  = {self.example_list_tld}
+            format        = text
+            reload        = off
+            zone_uid_name = {named_user}
+            zone_gid_name = {named_user}
 
             [zone]
-            origin       = {test_origin}
+            origin        = {test_origin}
 
             [list]
             {self.example_list_one}
@@ -339,11 +334,18 @@ class T3AcceptanceTests(FunctionalTestCase):
             socket.gethostbyname("example.com")
 
     def test_cron_workflow(self):
+        """
+        The most common use case should be a user who downloads
+        rpz-manager, plays with the command line flags, settles on a
+        particular config file, then runs rpz-manager as root - Possibly
+        as a cron job.
+        """
         proc = None
         try:
             self._test_command_line_preview()
             self._test_command_line_output(["-z", self.zone_path,
-                                            "--named-conf", named_conf])
+                                            "-u", named_user,
+                                            "-g", named_user])
             self._test_init_config()
             self._test_init_config_again()
             self._test_config_file_output()
@@ -355,19 +357,29 @@ class T3AcceptanceTests(FunctionalTestCase):
                 proc.terminate()
                 proc.wait(1)
 
-    # @unittest.skip
-    # def test_user_workflow(self):
-    #     user_zone_path = "/root/rpz.example.com.zone"
-    #     proc = None
-    #     try:
-    #         self._test_command_line_preview()
-    #         self._test_command_line_output(["-z", user_zone_path])
-    #         # A zone file already exists with the correct permissions
-    #         # from the previous test
-    #         shutil.copy(user_zone_path, self.zone_path)
-    #         proc = self._run_named()
-    #         self._test_resolve_nxdomain()
-    #     finally:
-    #         if proc:
-    #             proc.terminate()
-    #             proc.wait(1)
+    def test_user_workflow(self):
+        """
+        A user may want to run rpz-manager as an unprivileged user, so
+        they may limit time spent as root. Or they may want to compile
+        the zone on an Ansible master and copy the resulting zone file
+        over.
+        """
+        user_zone_path = "/home/unprivileged/rpz.example.com.zone"
+        user_cache_path = "/home/unprivileged"
+        proc = None
+        try:
+            self._test_command_line_preview()
+            self._test_command_line_output(["-z", user_zone_path,
+                                            "-d", user_cache_path,
+                                            "-u", "unprivileged",
+                                            "-g", "unprivileged",
+                                            "-m", "664"])
+            # A zone file already exists with the correct permissions
+            # from the previous test
+            shutil.copy(user_zone_path, self.zone_path)
+            proc = self._run_named()
+            self._test_resolve_nxdomain()
+        finally:
+            if proc:
+                proc.terminate()
+                proc.wait(1)

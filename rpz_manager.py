@@ -708,7 +708,7 @@ def collect_domains(settings, cache_dir):
             count += 1
             domains.add(item)
     if count > len(domains):
-        logger.info("removed %d duplicates", count - len(domains))
+        logger.debug("removed %d duplicates", count - len(domains))
     num_lists = len(settings.block_list_urls)
     logger.info("obtained %d domains from %d %s",
                 len(domains), num_lists, "list" if num_lists == 1 else "lists")

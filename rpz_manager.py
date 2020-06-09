@@ -44,6 +44,8 @@ from typing import List, Iterable
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+VERSION = "0.1"
+
 logging.basicConfig(format="%(message)s")
 logger = logging.getLogger("rpz-manager")
 logger.setLevel(logging.INFO)

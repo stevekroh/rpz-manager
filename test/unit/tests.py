@@ -29,45 +29,45 @@ logger.setLevel(logging.ERROR)
 class PipelineCollapseSubdomainsTest(TestCase):
     def test_duplicate(self):
         domains = ["example.com", "example.com"]
-        result = pl_collapse_subdomains(domains, {"window_length": 4})
+        result = pl_collapse_subdomains(window_length=4)(domains)
         self.assertListEqual(["example.com"], list(result))
 
     def test_subdomain_encountered_before(self):
         domains = ["www.example.com", "example.com"]
-        result = pl_collapse_subdomains(domains, {"window_length": 4})
+        result = pl_collapse_subdomains(window_length=4)(domains)
         self.assertListEqual(["example.com"], list(result))
 
     def test_subdomain_encountered_after(self):
         domains = ["example.com", "www.example.com"]
-        result = pl_collapse_subdomains(domains, {"window_length": 4})
+        result = pl_collapse_subdomains(window_length=4)(domains)
         self.assertListEqual(["example.com"], list(result))
 
     def test_empty(self):
         domains = []
-        result = pl_collapse_subdomains(domains, {"window_length": 4})
+        result = pl_collapse_subdomains(window_length=4)(domains)
         self.assertListEqual([], list(result))
 
     def test_many(self):
         domains = ["example.com", "example.net", "example.org",
                    "example.xyz", "example.biz", "example.gov"]
-        result = pl_collapse_subdomains(domains, {"window_length": 4})
+        result = pl_collapse_subdomains(window_length=4)(domains)
         self.assertListEqual(domains, list(result))
 
 
 class PipelineGeneralTests(TestCase):
     def test_pl_omit_ip_addresses(self):
         items = ["0.0.0.0"]
-        result = pl_omit_ip_addresses(items, {})
+        result = pl_omit_ip_addresses(items)
         self.assertFalse(list(result))
 
     def test_pl_omit_wildcards(self):
         items = ["*.example.com"]
-        result = pl_omit_wildcards(items, {})
+        result = pl_omit_wildcards(items)
         self.assertFalse(list(result))
 
     def test_pl_omit_invalid_top_level_domains(self):
         items = ["example.not"]
-        result = pl_omit_invalid_top_level_domains(items, {"tld_list": ["COM"]})
+        result = pl_omit_invalid_top_level_domains(["COM"])(items)
         self.assertFalse(list(result))
 
 
@@ -81,7 +81,7 @@ class PipelineSortByReverseDomainNotationTest(TestCase):
             "bar.example.com",
             "foo.bar.example.com"
         ]
-        result = pl_sort_by_rdn(domains, {})
+        result = pl_sort_by_rdn(domains)
         self.assertListEqual([
             "example.com",
             "bar.example.com",
@@ -99,10 +99,11 @@ class PipelineOmitLongTokensTest(TestCase):
     def test_when_subdomains_are_enabled(self):
         settings = MagicMock(origin="rpz.example.com", subdomains=True)
         domains = ("a" * i + ".example.net" for i in range(256))
-        pl_options = {"max_token_length": max_token_length(settings)}
+
+        mtl = derive_max_token_length(settings)
 
         result = list("*." + domain + ".rpz.example.com"
-                      for domain in pl_omit_long_tokens(domains, pl_options))
+                      for domain in pl_omit_long_tokens(mtl)(domains))
 
         self.assertTrue(all(len(domain) <= 253 for domain in result))
         self.assertTrue(any(len(domain) == 253 for domain in result))
@@ -110,10 +111,11 @@ class PipelineOmitLongTokensTest(TestCase):
     def test_when_subdomains_are_disabled(self):
         settings = MagicMock(origin="rpz.example.com", subdomains=False)
         domains = ("a" * i + ".example.net" for i in range(256))
-        pl_options = {"max_token_length": max_token_length(settings)}
+
+        mtl = derive_max_token_length(settings)
 
         result = list(domain + ".rpz.example.com"
-                      for domain in pl_omit_long_tokens(domains, pl_options))
+                      for domain in pl_omit_long_tokens(mtl)(domains))
 
         self.assertTrue(all(len(domain) <= 253 for domain in result))
         self.assertTrue(any(len(domain) == 253 for domain in result))
@@ -121,37 +123,36 @@ class PipelineOmitLongTokensTest(TestCase):
 
 class PipelineTokenizeTest(TestCase):
     def test_simple(self):
-        result = pl_tokenize(["example.com example.net example.org"], {})
+        result = pl_tokenize(["example.com example.net example.org"])
         expected = ["example.com", "example.net", "example.org"]
         self.assertListEqual(expected, list(result))
 
     def test_multiple_spaces(self):
-        result = pl_tokenize(["example.com  example.net  example.org"], {})
+        result = pl_tokenize(["example.com  example.net  example.org"])
         expected = ["example.com", "example.net", "example.org"]
         self.assertListEqual(expected, list(result))
 
     def test_ignore_after_comment(self):
-        result = pl_tokenize(["example.com  example.net  # example.org"], {})
+        result = pl_tokenize(["example.com  example.net  # example.org"])
         expected = ["example.com", "example.net"]
         self.assertListEqual(expected, list(result))
 
-        result = pl_tokenize(["example.com  example.net  #example.org"], {})
+        result = pl_tokenize(["example.com  example.net  #example.org"])
         expected = ["example.com", "example.net"]
         self.assertListEqual(expected, list(result))
 
 
 class PipelineCompositionTest(TestCase):
     def test_download_block_lists(self):
+        tld_list = ["COM", "ORG", "NET"]
         pipeline = compose([
             pl_omit_wildcards,
-            pl_omit_invalid_top_level_domains,
+            pl_omit_invalid_top_level_domains(tld_list),
             pl_omit_ip_addresses,
             pl_tokenize,
             pl_omit_line_comments,
             pl_normalize
-        ], {
-            "tld_list": ["COM", "ORG", "NET"]
-        })
+        ], debug_pipelines=[])
         text = test_data["http://lists.example.com/example_list_one.txt"]
         result = pipeline(text.splitlines())
         expected = [

@@ -1,7 +1,12 @@
 # rpz-manager
 Block ads and malicious domains with response policy zones.
 
-![CI](https://github.com/stevekroh/rpz-manager/workflows/CI/badge.svg?branch=version-0.x)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/stevekroh/rpz-manager?sort=semver)
+![PyPI](https://img.shields.io/pypi/v/rpz-manager)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/rpz-manager)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/y/stevekroh/rpz-manager)
+![GitHub commits since latest release (by SemVer)](https://img.shields.io/github/commits-since/stevekroh/rpz-manager/latest/master?sort=semver)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/stevekroh/rpz-manager/CI/master)
 
 From [Wikipedia](https://en.wikipedia.org/wiki/Response_policy_zone):
 
@@ -26,8 +31,8 @@ provide great documentation:
  - [Configuring a DNS firewall with RPZ](https://www.zytrax.com/books/dns/ch9/rpz.html)
  - [Response Policy Zone Configuration](https://www.zytrax.com/books/dns/ch7/rpz.html)
  
-At minimum, you must create a [new zone clause](test/system/named_zone_centos.conf) 
-for RPZ and mention that zone in a [response-policy statement](test/system/named_policy.conf).
+At minimum, you must create a [new zone clause](https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/test/system/named_zone_centos.conf) 
+for RPZ and mention that zone in a [response-policy statement](https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/test/system/named_policy.conf).
  
 ## Quick Start
 Run the following as root. /usr/local/bin may not be on the PATH.

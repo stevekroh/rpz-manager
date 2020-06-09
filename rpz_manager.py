@@ -395,30 +395,26 @@ def pipeline_debugger(pipeline, debug_pipelines):
         return pipeline
 
 
-def compose(functions, pl_options=None):
-    if pl_options is None:
-        pl_options = {}
-
-    debug_pipelines = pl_options.get("debug_pipelines", [])
+def compose(functions, debug_pipelines):
     functions = [pipeline_debugger(fn, debug_pipelines) for fn in functions]
 
     def compose2(f, g):
-        return lambda x: f(g(x, pl_options))
+        return lambda x: f(g(x))
     return functools.reduce(compose2, functions, lambda x: x)
 
 
-def pl_normalize(lines, pl_options):
+def pl_normalize(lines):
     for line in lines:
         yield line.strip()
 
 
-def pl_omit_line_comments(lines, pl_options):
+def pl_omit_line_comments(lines):
     for line in lines:
         if not line.startswith("#"):
             yield line
 
 
-def pl_tokenize(lines, pl_options):
+def pl_tokenize(lines):
     for line in lines:
         for token in line.split():
             if not token:
@@ -429,7 +425,7 @@ def pl_tokenize(lines, pl_options):
                 yield token
 
 
-def pl_omit_ip_addresses(tokens, pl_options):
+def pl_omit_ip_addresses(tokens):
     for token in tokens:
         try:
             ipaddress.ip_address(token)
@@ -437,14 +433,16 @@ def pl_omit_ip_addresses(tokens, pl_options):
             yield token
 
 
-def pl_omit_invalid_top_level_domains(tokens, pl_options):
-    for token in tokens:
-        tld = reverse_domain_notation(token)[0]
-        if tld.upper() in pl_options["tld_list"]:
-            yield token
+def pl_omit_invalid_top_level_domains(tld_list):
+    def pipeline(tokens):
+        for token in tokens:
+            tld = reverse_domain_notation(token)[0]
+            if tld.upper() in tld_list:
+                yield token
+    return pipeline
 
 
-def pl_omit_wildcards(tokens, pl_options):
+def pl_omit_wildcards(tokens):
     for token in tokens:
         if not token.startswith("*"):
             yield token
@@ -462,7 +460,7 @@ class WindowToken:
         return False
 
 
-def pl_collapse_subdomains(tokens, pl_options):
+def pl_collapse_subdomains(window_length=4):
     """
     When a subdomain and its parent domain are included in a list, keep
     only the parent domain. This pipeline is used with
@@ -471,44 +469,47 @@ def pl_collapse_subdomains(tokens, pl_options):
 
     A sliding window is used for efficiency.
     """
-    window = collections.deque()
-    window_length = pl_options.get("window_length", 4)
-    for this_token in tokens:
-        this = WindowToken(this_token, do_yield=True)
-        for that in window:
-            # example.com
-            # example.com
-            if this.token == that.token:
-                that.do_yield = False
-            # example.com
-            # www.example.com
-            elif this.subdomain_of(that):
-                this.do_yield = False
-            # www.example.com
-            # google.com
-            elif that.subdomain_of(this):
-                that.do_yield = False
-        window.append(this)
-        if len(window) > window_length:
-            item = window.popleft()
+    def pipeline(tokens):
+        window = collections.deque()
+        for this_token in tokens:
+            this = WindowToken(this_token, do_yield=True)
+            for that in window:
+                # example.com
+                # example.com
+                if this.token == that.token:
+                    that.do_yield = False
+                # example.com
+                # www.example.com
+                elif this.subdomain_of(that):
+                    this.do_yield = False
+                # www.example.com
+                # google.com
+                elif that.subdomain_of(this):
+                    that.do_yield = False
+            window.append(this)
+            if len(window) > window_length:
+                item = window.popleft()
+                if item.do_yield:
+                    yield item.token
+        for item in window:  # flush window
             if item.do_yield:
                 yield item.token
-    for item in window:  # flush window
-        if item.do_yield:
-            yield item.token
+    return pipeline
 
 
-def pl_omit_long_tokens(tokens, pl_options):
+def pl_omit_long_tokens(max_token_length=200):
     """
     Omit tokens longer than `max_token_length` characters.
     See max_token_length() for details.
     """
-    for token in tokens:
-        if len(token) <= pl_options.get("max_token_length", 200):
-            yield token
+    def pipeline(tokens):
+        for token in tokens:
+            if len(token) <= max_token_length:
+                yield token
+    return pipeline
 
 
-def pl_omit_xn_top_level_domains(tokens, pl_options):
+def pl_omit_xn_top_level_domains(tokens):
     """
     Omit internationalized top level domains until we can handle them.
     TODO: handle internationalized top level domains
@@ -518,16 +519,16 @@ def pl_omit_xn_top_level_domains(tokens, pl_options):
             yield token
 
 
-def pl_to_uppercase(tokens, pl_options):
+def pl_to_uppercase(tokens):
     for token in tokens:
         yield token.upper()
 
 
-def pl_sort_by_rdn(tokens, pl_options):
+def pl_sort_by_rdn(tokens):
     return sorted(tokens, key=reverse_domain_notation)
 
 
-def pl_block_subdomains(tokens, pl_options):
+def pl_block_subdomains(tokens):
     """
     For each domain, block all of its subdomains.
     """
@@ -641,23 +642,20 @@ def download_block_lists(settings, cache_dir, disable_cache):
         pl_to_uppercase,
         pl_omit_xn_top_level_domains,
         pl_normalize
-    ], {
-        "debug_pipelines": settings.debug_pipelines
-    })
+    ], settings.debug_pipelines)
     download_lists(pipeline, cache_dir, disable_cache,
                    settings.tld_list_url)
 
+    tld_list = get_list(cache_dir, settings.tld_list_url)
+
     pipeline = compose([
         pl_omit_wildcards,
-        pl_omit_invalid_top_level_domains,
+        pl_omit_invalid_top_level_domains(tld_list),
         pl_omit_ip_addresses,
         pl_tokenize,
         pl_omit_line_comments,
         pl_normalize
-    ], {
-        "tld_list": get_list(cache_dir, settings.tld_list_url),
-        "debug_pipelines": settings.debug_pipelines
-    })
+    ], settings.debug_pipelines)
     download_lists(pipeline, cache_dir, disable_cache,
                    *settings.block_list_urls)
 
@@ -667,7 +665,7 @@ def download_block_lists(settings, cache_dir, disable_cache):
 ASCII_DNS_NAME_MAX_LENGTH = 253
 
 
-def max_token_length(settings):
+def derive_max_token_length(settings):
     """
     Determine the max length of tokens we can accommodate when
     considering each resource record concatenates a token with the zone
@@ -702,19 +700,18 @@ def collect_domains(settings, cache_dir):
     logger.info("obtained %d domains from %d %s",
                 len(domains), num_lists, "list" if num_lists == 1 else "lists")
 
+    max_token_length = derive_max_token_length(settings)
+    window_length = 4
+
     pipeline = compose([
         pl_block_subdomains,
-        pl_collapse_subdomains,
-        pl_omit_long_tokens,
+        pl_collapse_subdomains(window_length),
+        pl_omit_long_tokens(max_token_length),
         pl_sort_by_rdn
     ] if settings.subdomains else [
-        pl_omit_long_tokens,
+        pl_omit_long_tokens(max_token_length),
         pl_sort_by_rdn
-    ], {
-        "window_length": 4,
-        "max_token_length": max_token_length(settings),
-        "debug_pipelines": settings.debug_pipelines
-    })
+    ], settings.debug_pipelines)
     return pipeline(domains)
 
 

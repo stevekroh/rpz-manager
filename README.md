@@ -34,28 +34,31 @@ provide great documentation:
 At minimum, you must create a [new zone clause](https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/test/system/named_zone_centos.conf) 
 for RPZ and mention that zone in a [response-policy statement](https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/test/system/named_policy.conf).
  
-## Quick Start
-Run the following as root. /usr/local/bin may not be on the PATH.
+## How to Install
+Run the following as root.
 ```shell script
 # Download rpz-manager
 curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/rpz_manager.py \
   -o /usr/local/bin/rpz-manager
 
 # Set the executable bit
-chmod u+x /usr/local/bin/rpz-manager
+chmod 755 /usr/local/bin/rpz-manager
+```
+Alternatively, create a virtualenv and run pip install rpz-manager.
 
+## Quick Start
+```shell script
 # View the help screen
 rpz-manager --help
 
-# Write /etc/rpz-manager.ini
-# Then update this file to meet your needs
+# Write, then review /etc/rpz-manager.ini
 rpz-manager --init
 
 # Optionally set up logging
 curl -Ss https://raw.githubusercontent.com/stevekroh/rpz-manager/version-0.x/config/rpz-loggers.ini \
   -o /etc/rpz-loggers.ini
 
-# Download block lists then generate an RPZ zone file
+# Download block lists then write an RPZ zone file
 rpz-manager
 ```
  
@@ -98,6 +101,23 @@ Add the following to your role or playbook.
     special_time: daily
     job: /usr/local/bin/rpz-manager
     user: root
+```
+
+## Run Without Root
+It is possible to run rpz-manager without root permissions, though you must
+be sure to update all relevant settings pertaining to the user.
+
+For example:
+```shell script
+# Create an administrator belonging to the named group
+useradd -m -G named admin
+
+# Create the user cache directory
+mkdir -p /home/admin/.cache
+
+# Run rpz-manager
+rpz-manager -o rpz.example.com. -z /var/named/rpz.example.com.zone \
+  -u admin -g named -d /home/admin/.cache
 ```
 
 Inspired by [Trellmor/bind-adblock](https://github.com/Trellmor/bind-adblock).

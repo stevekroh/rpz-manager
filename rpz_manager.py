@@ -56,7 +56,7 @@ IANA_TLD_LIST = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
 
 blurb = """
 This program allows you to build and maintain RPZ zones from domain 
-blocklist feeds. The resulting zones can be used with ISC bind (and 
+block list feeds. The resulting zones can be used with ISC bind (and 
 other compatible DNS servers).
 """
 
@@ -79,7 +79,7 @@ default_config_file = f"""
 cache_dir     = /var/cache/rpz-manager
 disable_cache = off
 zone_file     = /var/named/rpz.example.com.zone
-zone_uid_name = named
+zone_uid_name = root
 zone_gid_name = named
 zone_mode     = 664
 format        = text
@@ -211,20 +211,6 @@ class Settings:
         return self.get_setting(item)
 
     def catalog(self):
-        """
-        Calls to add_setting follow the ArgumentParser.add_argument
-        interface, with some additions.
-
-        If required=True, the setting must appear in the arguments or
-        the config file. Otherwise an exception will be raised. The
-        default will not be used.
-
-        If section= is provided, the config file will be consulted. The
-        setting will be looked up under that section.
-
-        If flag arguments are not provided, only the config file will
-        be consulted.
-        """
         self.add_setting("--init", dest="init", type=bool, default=False,
                          help="write the default config file",
                          action="store_true")
@@ -273,7 +259,7 @@ class Settings:
                          help="write the zone file to this location",
                          section=self.main_section)
         self.add_setting("-u", "--zone-uid-name", dest="zone_uid_name",
-                         type=str, default="named",
+                         type=str, default="root",
                          help="owner of the zone file to be written",
                          section=self.main_section)
         self.add_setting("-g", "--zone-gid-name", dest="zone_gid_name",
@@ -303,18 +289,22 @@ class Settings:
     def add_setting(self, *args, dest=None, section=None, required=False,
                     **kwargs):
         """
-        Configures the arg_parser and cfg_parser for this setting.
+        Prepare arg_parser and cfg_parser to accommodate a new setting.
 
-        If an argparse action is provided, do not tell the arg_parser
-        about the type, as action= and type= are incompatible.
+        If section= is provided, the config file will be consulted. The
+        setting will be looked up under that section. If flag arguments
+        are not provided, only the config file will be consulted.
 
-        If both the arguments and the config file should be consulted
-        for this setting, we store its default in the cfg_parser.
-        Otherwise we store its default in the arg_parser.
+        If both the program arguments and the config file should be
+        consulted for this setting, we store the setting default in
+        cfg_parser. Otherwise we store the default in arg_parser.
 
-        `block_list_urls` is the only list stored in the config file.
-        Its default is set by converting the list to a dictionary which
-        is stored under the [list] section.
+        action= and type= are incompatible. If both are present, omit
+        type from the call to arg_parser.add_argument().
+
+        The default value of block_list_urls is set by converting that
+        list to a dictionary. The whole dictionary is stored under the
+        list section.
         """
         type = kwargs["type"]
         self.metadata[dest] = self.Metadata(type, section, required)
@@ -340,7 +330,8 @@ class Settings:
     def get_setting(self, item):
         """
         Get the setting value by consulting sources in order of
-        precedence.
+        precedence: program arguments, then config file, then program
+        defaults.
 
         If there is a value in the program arguments, use that. Then
         handle special cases (lists and required settings). Finally
@@ -475,10 +466,9 @@ class WindowToken:
 
 def pl_collapse_subdomains(window_length=4):
     """
-    When a subdomain and its parent domain are included in a list, keep
-    only the parent domain. This pipeline is used with
-    `--block-subdomains` as there is no point blocking both
-    *.example.com and *.www.example.com.
+    When a subdomain and its parent domain are both included in a list,
+    keep only the parent domain. This pipeline is used with --subdomains
+    as there is no point blocking *.example.com and *.www.example.com.
 
     A sliding window is used for efficiency.
     """
@@ -512,8 +502,8 @@ def pl_collapse_subdomains(window_length=4):
 
 def pl_omit_long_tokens(max_token_length=200):
     """
-    Omit tokens longer than `max_token_length` characters.
-    See max_token_length() for details.
+    Omit tokens longer than max_token_length characters.
+    See derive_max_token_length() for details.
     """
     def pipeline(tokens):
         for token in tokens:
@@ -619,7 +609,7 @@ def _handle_response(cache_path, pipeline, req_headers, res, temp_file):
 def download_lists(pipeline, cache_dir, disable_cache, *list_urls):
     """
     Request each url, pass each response through the specified pipeline,
-    and save each result to the cache.
+    then save each result to the cache.
 
     Does not write anything to the cache if we get 304 NOT MODIFIED.
     Does not trust a 200 response. Results are always compared against
@@ -680,8 +670,9 @@ ASCII_DNS_NAME_MAX_LENGTH = 253
 
 def derive_max_token_length(settings):
     """
-    Determine the max length of tokens we can accommodate when
-    considering each resource record concatenates a token with the zone
+    Determine the max length of tokens we can accommodate.
+
+    Consider each resource record concatenates a token with the zone
     origin and other text. The combination cannot exceed 253 characters
     ignoring the root label (trailing dot).
 
@@ -738,7 +729,7 @@ Zone = Iterable[str]
 
 def generate_rpz_zone(domains, template) -> Zone:
     """
-    Generate component lines of the RPZ zonefile.
+    Generate component lines of the RPZ zone file.
     """
     yield template.strip() + os.linesep
     for domain in domains:
@@ -748,7 +739,7 @@ def generate_rpz_zone(domains, template) -> Zone:
 def _get_command(command_name):
     command = find_executable(command_name)
     if command is None:
-        logger.error("%s failed", command_name)
+        logger.error("could not find %s", command_name)
         raise CommandExitFailure
     return command
 
@@ -793,8 +784,8 @@ def write_zone(settings, zone: Zone, zone_name, zone_path):
     Verify and write the entire zone to disk, with an optional
     compilation step.
 
-    For now, the owner and permissions of the written file are copied
-    from the permissions of named.conf.
+    The zone file owner, group, and mode are set based on program
+    settings.
     """
     format = settings.format
     if zone_path is not None and format == "text":
